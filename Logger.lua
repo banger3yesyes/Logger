@@ -19,7 +19,7 @@ gui.Parent = Players.LocalPlayer.PlayerGui
 -- Create main frame
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 300, 0, 400)
+mainFrame.Size = UDim2.new({0.288, 0},{0.22, 0})
 mainFrame.Position = UDim2.new(0, 0, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 mainFrame.BackgroundTransparency = 0.5
@@ -51,7 +51,7 @@ topCorner.Parent = topBar
 -- Create title
 local title = Instance.new("TextLabel")
 title.Name = "Title"
-title.Text = "Animation Logger"
+title.Text = "Animation Logger by Banger"
 title.Size = UDim2.new(0.7, 0, 1, 0)
 title.Position = UDim2.new(0, 10, 0, 0)
 title.BackgroundTransparency = 1
