@@ -2,9 +2,19 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local PlayerGui = Players.LocalPlayer.PlayerGui
+local LocalPlayer = Players.LocalPlayer
+
+-- Function to get local player's animator
+local function getLocalAnimator()
+	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+		return LocalPlayer.Character.Humanoid:FindFirstChild("Animator")
+	end
+	return nil
+end
 
 -- Remove any existing logger
-for _, gui in ipairs(game:GetService("CoreGui"):GetChildren()) do
+for _, gui in ipairs(PlayerGui:GetChildren()) do
 	if gui.Name == "AnimationLogger" then
 		gui:Destroy()
 	end
@@ -13,7 +23,7 @@ end
 -- Create ScreenGui
 local gui = Instance.new("ScreenGui")
 gui.Name = "AnimationLogger"
-gui.Parent = game.CoreGui
+gui.Parent = Players.LocalPlayer.PlayerGui
 
 -- Create main frame
 local mainFrame = Instance.new("Frame")
@@ -81,7 +91,7 @@ clearButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 clearButton.BackgroundTransparency = 1 
 clearButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 clearButton.TextSize = 12
-clearButton.Font = Enum.Font.SourceSans
+clearButton.Font = Enum.Font.GothamBold
 clearButton.BorderSizePixel = 0
 clearButton.Parent = topBar
 
@@ -128,21 +138,28 @@ local function updateScrollingFrame()
 	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y)
 end
 
-local function stopAllAnimations(animator)
-	for _, track in pairs(animator:GetPlayingAnimationTracks()) do
-		track:Stop()
+local function stopAllAnimations()
+	local animator = getLocalAnimator()
+	if animator then
+		for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+			track:Stop()
+		end
 	end
 end
 
-local function stopAnimation(animator, animTrack)
-	if activeAnimations[animator] and activeAnimations[animator][animTrack] then
+local function stopAnimation(_, animTrack)
+	local animator = getLocalAnimator()
+	if animator and activeAnimations[animator] and activeAnimations[animator][animTrack] then
 		activeAnimations[animator][animTrack]:Stop()
 		activeAnimations[animator][animTrack] = nil
 	end
 end
 
-local function playAnimation(animator, animId)
-	stopAllAnimations(animator)
+local function playAnimation(_, animId)
+	local animator = getLocalAnimator()
+	if not animator then return end
+	
+	stopAllAnimations()
 	local animation = Instance.new("Animation")
 	animation.AnimationId = animId
 	local animTrack = animator:LoadAnimation(animation)
@@ -209,7 +226,7 @@ local function createAnimationEntry(animator, animId, animName)
 	playButton.Text = "Play"
 	playButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	playButton.TextSize = 12
-	playButton.Font = Enum.Font.SourceSans
+	playButton.Font = Enum.Font.GothamBold
 	playButton.BorderSizePixel = 0
 	playButton.Parent = buttonContainer
 
@@ -220,7 +237,7 @@ local function createAnimationEntry(animator, animId, animName)
 	clearButton.Text = "Clear"
 	clearButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	clearButton.TextSize = 12
-	clearButton.Font = Enum.Font.SourceSans
+	clearButton.Font = Enum.Font.GothamBold
 	clearButton.BorderSizePixel = 0
 	clearButton.Parent = buttonContainer
 
