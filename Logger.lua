@@ -7,6 +7,132 @@ local TweenService = game:GetService("TweenService")
 
 local loggedAnimations = {}
 
+local gui = Instance.new("ScreenGui")
+local mainFrame = Instance.new("Frame")
+local titleBar = Instance.new("Frame")
+local titleText = Instance.new("TextLabel")
+local closeButton = Instance.new("TextButton")
+local minimizeButton = Instance.new("TextButton")
+local scrollFrame = Instance.new("ScrollingFrame")
+local minimizedIcon = Instance.new("ImageButton")
+
+-- GUI setup
+gui.Name = "AnimationLogger"
+gui.ResetOnSpawn = false
+
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 300, 0, 400)
+mainFrame.Position = UDim2.new(0.5, -150, 0.5, -200)
+mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = gui
+
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+titleBar.BorderSizePixel = 0
+titleBar.Parent = mainFrame
+
+titleText.Name = "TitleText"
+titleText.Size = UDim2.new(1, -60, 1, 0)
+titleText.Position = UDim2.new(0, 5, 0, 0)
+titleText.BackgroundTransparency = 1
+titleText.Text = "Animation Logger"
+titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleText.TextXAlignment = Enum.TextXAlignment.Left
+titleText.TextSize = 14
+titleText.Font = Enum.Font.SourceSansBold
+titleText.Parent = titleBar
+
+closeButton.Name = "CloseButton"
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -30, 0, 0)
+closeButton.BackgroundTransparency = 1
+closeButton.Text = "×"
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.TextSize = 20
+closeButton.Font = Enum.Font.SourceSansBold
+closeButton.Parent = titleBar
+
+minimizeButton.Name = "MinimizeButton"
+minimizeButton.Size = UDim2.new(0, 30, 0, 30)
+minimizeButton.Position = UDim2.new(1, -60, 0, 0)
+minimizeButton.BackgroundTransparency = 1
+minimizeButton.Text = "-"
+minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeButton.TextSize = 20
+minimizeButton.Font = Enum.Font.SourceSansBold
+minimizeButton.Parent = titleBar
+
+scrollFrame.Name = "ScrollFrame"
+scrollFrame.Size = UDim2.new(1, -10, 1, -40)
+scrollFrame.Position = UDim2.new(0, 5, 0, 35)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.ScrollBarThickness = 6
+scrollFrame.Parent = mainFrame
+
+minimizedIcon.Name = "MinimizedIcon"
+minimizedIcon.Size = UDim2.new(0, 30, 0, 30)
+minimizedIcon.Position = UDim2.new(0.5, -15, 0, 0)
+minimizedIcon.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+minimizedIcon.BorderSizePixel = 0
+minimizedIcon.Image = "rbxassetid://4034483344"
+minimizedIcon.Visible = false
+minimizedIcon.Parent = gui
+
+local function createLogEntry(animId)
+    local entryFrame = Instance.new("Frame")
+    entryFrame.Size = UDim2.new(1, -10, 0, 25)
+    entryFrame.Position = UDim2.new(0, 5, 0, #scrollFrame:GetChildren() * 27)
+    entryFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    entryFrame.BorderSizePixel = 0
+    entryFrame.Parent = scrollFrame
+
+    local idLabel = Instance.new("TextLabel")
+    idLabel.Size = UDim2.new(1, -30, 1, 0)
+    idLabel.Position = UDim2.new(0, 5, 0, 0)
+    idLabel.BackgroundTransparency = 1
+    idLabel.Text = animId
+    idLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    idLabel.TextXAlignment = Enum.TextXAlignment.Left
+    idLabel.TextSize = 14
+    idLabel.Font = Enum.Font.SourceSans
+    idLabel.Parent = entryFrame
+
+    local playButton = Instance.new("TextButton")
+    playButton.Size = UDim2.new(0, 25, 0, 25)
+    playButton.Position = UDim2.new(1, -25, 0, 0)
+    playButton.BackgroundTransparency = 1
+    playButton.Text = "▶"
+    playButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    playButton.TextSize = 14
+    playButton.Font = Enum.Font.SourceSansBold
+    playButton.Parent = entryFrame
+
+    local currentTrack = nil
+    playButton.MouseButton1Click:Connect(function()
+        if currentTrack and currentTrack.IsPlaying then
+            currentTrack:Stop()
+            playButton.Text = "▶"
+            currentTrack = nil
+        else
+            if currentTrack then
+                currentTrack:Stop()
+            end
+            currentTrack = playAnimation(animId)
+            if currentTrack then
+                playButton.Text = "⏹"
+                currentTrack.Stopped:Connect(function()
+                    playButton.Text = "▶"
+                    currentTrack = nil
+                end)
+            end
+        end
+    end)
+
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, #scrollFrame:GetChildren() * 27)
+end
+
 local function extractId(assetUrl)
     local id = assetUrl:match("rbxassetid://(%d+)")
     if id then return id end
@@ -17,6 +143,55 @@ local function extractId(assetUrl)
     if assetUrl:match("^%d+$") then return assetUrl end
 
     return assetUrl
+end
+
+local function playAnimation(id)
+    print("Attempting to play animation:", id)
+    
+    local player = Players.LocalPlayer
+    if not player.Character then 
+        print("No character found")
+        return 
+    end
+    
+    local humanoid = player.Character:FindFirstChild("Humanoid")
+    if not humanoid then 
+        print("No humanoid found")
+        return 
+    end
+    
+    local animator = humanoid:FindFirstChild("Animator")
+    if not animator then 
+        print("No animator found")
+        return 
+    end
+    
+    print("Found all required components, playing animation")
+    
+    for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+        track:Stop()
+    end
+    
+    local animation = Instance.new("Animation")
+    if not id:match("^rbxassetid://") then
+        id = "rbxassetid://" .. id
+    end
+    animation.AnimationId = id
+    print("Created animation with ID:", animation.AnimationId)
+    
+    local success, animTrack = pcall(function()
+        return animator:LoadAnimation(animation)
+    end)
+    
+    if success and animTrack then
+        print("Successfully loaded animation, playing...")
+        animTrack:Play()
+        animation:Destroy()
+        return animTrack
+    else
+        print("Failed to load animation:", animTrack)
+        return nil
+    end
 end
 
 local function hookAnimations(character)
@@ -34,55 +209,6 @@ local function hookAnimations(character)
             createLogEntry(animTrack.Animation.AnimationId)
         end
     end)
-end
-
-local function playAnimation(id)
-    print("Attempting to play animation:", id)
-
-    local player = Players.LocalPlayer
-    if not player.Character then 
-        print("No character found")
-        return 
-    end
-
-    local humanoid = player.Character:FindFirstChild("Humanoid")
-    if not humanoid then 
-        print("No humanoid found")
-        return 
-    end
-
-    local animator = humanoid:FindFirstChild("Animator")
-    if not animator then 
-        print("No animator found")
-        return 
-    end
-
-    print("Found all required components, playing animation")
-
-    for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
-        track:Stop()
-    end
-
-    local animation = Instance.new("Animation")
-    if not id:match("^rbxassetid://") then
-        id = "rbxassetid://" .. id
-    end
-    animation.AnimationId = id
-    print("Created animation with ID:", animation.AnimationId)
-
-    local success, animTrack = pcall(function()
-        return animator:LoadAnimation(animation)
-    end)
-
-    if success and animTrack then
-        print("Successfully loaded animation, playing...")
-        animTrack:Play()
-        animation:Destroy()
-        return animTrack
-    else
-        print("Failed to load animation:", animTrack)
-        return nil
-    end
 end
 
 local function makeDraggable(frame)
@@ -119,220 +245,21 @@ local function makeDraggable(frame)
     end)
 end
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "AnimationLogger"
-gui.ResetOnSpawn = false
-
-local minimizedIcon = Instance.new("ImageButton")
-minimizedIcon.Size = UDim2.new(0, 30, 0, 30)
-minimizedIcon.Position = UDim2.new(0.5, -15, 0, 10)
-minimizedIcon.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-minimizedIcon.BackgroundTransparency = 0.5
-minimizedIcon.Image = "rbxassetid://6034925618"
-minimizedIcon.Visible = false
-minimizedIcon.Parent = gui
-
-local iconCorner = Instance.new("UICorner")
-iconCorner.CornerRadius = UDim.new(0, 6)
-iconCorner.Parent = minimizedIcon
-
-local frame = Instance.new("Frame")
-frame.Name = "MainFrame"
-frame.Size = UDim2.new(0, 250, 0, 200)
-frame.Position = UDim2.new(0.5, -125, 0.5, -100)
-frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-frame.BackgroundTransparency = 0.6
-frame.BorderSizePixel = 0
-frame.Parent = gui
-
-local controlsContainer = Instance.new("Frame")
-controlsContainer.Size = UDim2.new(0, 50, 0, 25)
-controlsContainer.Position = UDim2.new(0, 5, 0, 5)
-controlsContainer.BackgroundTransparency = 1
-controlsContainer.Parent = frame
-
-local closeButton = Instance.new("TextButton")
-closeButton.Size = UDim2.new(0, 20, 0, 20)
-closeButton.Position = UDim2.new(0, 0, 0, 0)
-closeButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-closeButton.BackgroundTransparency = 0.5
-closeButton.Text = "×"
-closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeButton.TextSize = 14
-closeButton.Font = Enum.Font.SourceSansBold
-closeButton.Parent = controlsContainer
-
-local closeCorner = Instance.new("UICorner")
-closeCorner.CornerRadius = UDim.new(0, 4)
-closeCorner.Parent = closeButton
-
-local minimizeButton = Instance.new("TextButton")
-minimizeButton.Size = UDim2.new(0, 20, 0, 20)
-minimizeButton.Position = UDim2.new(0, 25, 0, 0)
-minimizeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-minimizeButton.BackgroundTransparency = 0.5
-minimizeButton.Text = "-"
-minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-minimizeButton.TextSize = 14
-minimizeButton.Font = Enum.Font.SourceSansBold
-minimizeButton.Parent = controlsContainer
-
-local minimizeCorner = Instance.new("UICorner")
-minimizeCorner.CornerRadius = UDim.new(0, 4)
-minimizeCorner.Parent = minimizeButton
-
-local isMinimized = false
-local normalPosition = UDim2.new(0.5, -125, 0.5, -100)
-local minimizedPosition = UDim2.new(1, 10, 0.5, -100)
-
-local function minimize()
-    if not isMinimized then
-        local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        local tween = TweenService:Create(frame, tweenInfo, {Position = minimizedPosition})
-        tween:Play()
-
-        tween.Completed:Connect(function()
-            minimizedIcon.Visible = true
-        end)
-
-        isMinimized = true
-    end
-end
-
-local function maximize()
-    if isMinimized then
-        minimizedIcon.Visible = false
-
-        local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        local tween = TweenService:Create(frame, tweenInfo, {Position = normalPosition})
-        tween:Play()
-        isMinimized = false
-    end
-end
+makeDraggable(titleBar)
 
 closeButton.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
-minimizeButton.MouseButton1Click:Connect(minimize)
-minimizedIcon.MouseButton1Click:Connect(maximize)
+minimizeButton.MouseButton1Click:Connect(function()
+    mainFrame.Visible = false
+    minimizedIcon.Visible = true
+end)
 
-makeDraggable(frame)
-
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 6)
-corner.Parent = frame
-
-local title = Instance.new("TextLabel")
-title.Name = "Title"
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Position = UDim2.new(0, 0, 0, 0)
-title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-title.BackgroundTransparency = 1
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.Text = "Animation Logger"
-title.TextSize = 14
-title.Font = Enum.Font.SourceSans
-title.Parent = frame
-
-local titleCorner = Instance.new("UICorner")
-titleCorner.CornerRadius = UDim.new(0, 6)
-titleCorner.Parent = title
-
-local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Name = "LogFrame"
-scrollFrame.Size = UDim2.new(1, -10, 1, -40)
-scrollFrame.Position = UDim2.new(0, 5, 0, 35)
-scrollFrame.BackgroundTransparency = 1
-scrollFrame.ScrollBarThickness = 3
-scrollFrame.Parent = frame
-
-local function createLogEntry(animId)
-    print("Creating log entry for animation:", animId)
-
-    local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, -4, 0, 25)
-    container.Position = UDim2.new(0, 2, 0, (#scrollFrame:GetChildren() * 27))
-    container.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    container.BackgroundTransparency = 0.5
-    container.BorderSizePixel = 0
-    container.Parent = scrollFrame
-
-    local containerCorner = Instance.new("UICorner")
-    containerCorner.CornerRadius = UDim.new(0, 4)
-    containerCorner.Parent = container
-
-    local idBox = Instance.new("TextBox")
-    idBox.Size = UDim2.new(1, -35, 1, 0)
-    idBox.Position = UDim2.new(0, 0, 0, 0)
-    idBox.BackgroundTransparency = 1
-    idBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    idBox.Text = extractId(animId)
-    idBox.TextSize = 14
-    idBox.Font = Enum.Font.Code
-    idBox.ClearTextOnFocus = false
-    idBox.TextEditable = false
-    idBox.Parent = container
-
-    local playButton = Instance.new("TextButton")
-    playButton.Size = UDim2.new(0, 25, 0, 25)
-    playButton.Position = UDim2.new(1, -25, 0, 0)
-    playButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    playButton.BackgroundTransparency = 0.5
-    playButton.Text = "▶"
-    playButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    playButton.TextSize = 14
-    playButton.Font = Enum.Font.Code
-    playButton.Parent = container
-
-    local playButtonCorner = Instance.new("UICorner")
-    playButtonCorner.CornerRadius = UDim.new(0, 4)
-    playButtonCorner.Parent = playButton
-
-    local currentTrack = nil
-
-    idBox.Focused:Connect(function()
-        idBox.TextEditable = true
-        idBox.SelectionStart = 1
-        idBox.CursorPosition = #idBox.Text + 1
-
-        container.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        wait(0.2)
-        container.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    end)
-
-    idBox.FocusLost:Connect(function()
-        idBox.TextEditable = false
-    end)
-
-    playButton.MouseButton1Click:Connect(function()
-        if currentTrack and currentTrack.IsPlaying then
-            currentTrack:Stop()
-            currentTrack = nil
-            playButton.Text = "▶"
-            playButton.BackgroundTransparency = 0.5
-        else
-            playButton.BackgroundTransparency = 0.5
-            playButton.Text = "▶"
-
-            currentTrack = playAnimation(idBox.Text)
-
-            if currentTrack then
-                currentTrack.Stopped:Connect(function()
-                    playButton.Text = "▶"
-                    playButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-                    playButton.BackgroundTransparency = 0.5
-                    currentTrack = nil
-                end)
-            else
-                playButton.Text = "▶"
-                playButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-            end
-        end
-    end)
-
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, #scrollFrame:GetChildren() * 27)
-end
+minimizedIcon.MouseButton1Click:Connect(function()
+    mainFrame.Visible = true
+    minimizedIcon.Visible = false
+end)
 
 local player = Players.LocalPlayer
 getgenv().AnimLogger = gui
