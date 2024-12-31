@@ -19,32 +19,21 @@ local function extractId(assetUrl)
     return assetUrl
 end
 
-local function hookCharacter(character)
-    if not character then return end
-    
-    local humanoid = character:WaitForChild("Humanoid", 10)
-    if not humanoid then return end
-    
-    local animator = humanoid:WaitForChild("Animator", 10)
-    if not animator then return end
-    
-    -- Hook into animation played event
+local function hookAnimations(character)
+    print("Hooking animations for character:", character.Name)
+
+    local humanoid = character:WaitForChild("Humanoid")
+    local animator = humanoid:WaitForChild("Animator")
+
+    print("Got animator:", animator)
+
     animator.AnimationPlayed:Connect(function(animTrack)
         local animId = extractId(animTrack.Animation.AnimationId)
-        if not loggedAnimations[animId] and animId ~= "" then
+        if not loggedAnimations[animId] then
             loggedAnimations[animId] = true
             createLogEntry(animTrack.Animation.AnimationId)
         end
     end)
-    
-    -- Log any currently playing animations
-    for _, track in pairs(animator:GetPlayingAnimationTracks()) do
-        local animId = extractId(track.Animation.AnimationId)
-        if not loggedAnimations[animId] and animId ~= "" then
-            loggedAnimations[animId] = true
-            createLogEntry(track.Animation.AnimationId)
-        end
-    end
 end
 
 local function playAnimation(id)
@@ -351,28 +340,12 @@ gui.Parent = game:GetService("CoreGui")
 
 print("Setting up animation logger")
 
--- Hook all existing players
-for _, plr in ipairs(Players:GetPlayers()) do
-    if plr.Character then
-        hookCharacter(plr.Character)
-    end
-    plr.CharacterAdded:Connect(hookCharacter)
-end
-
--- Hook new players
-Players.PlayerAdded:Connect(function(plr)
-    plr.CharacterAdded:Connect(hookCharacter)
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(hookAnimations)
 end)
 
--- Hook NPCs and other humanoid models in workspace
-for _, model in ipairs(workspace:GetDescendants()) do
-    if model:IsA("Model") and model:FindFirstChild("Humanoid") then
-        hookCharacter(model)
-    end
+if player.Character then
+    hookAnimations(player.Character)
 end
 
-workspace.DescendantAdded:Connect(function(desc)
-    if desc:IsA("Model") and desc:FindFirstChild("Humanoid") then
-        hookCharacter(desc)
-    end
-end)
+player.CharacterAdded:Connect(hookAnimations)
