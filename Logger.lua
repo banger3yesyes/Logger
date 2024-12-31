@@ -50,7 +50,7 @@ topCorner.Parent = topBar
 -- Create title
 local title = Instance.new("TextLabel")
 title.Name = "Title"
-title.Text = "Animation Logger"
+title.Text = "Animation Logger by Banger"
 title.Size = UDim2.new(0.7, 0, 1, 0)
 title.Position = UDim2.new(0, 10, 0, 0)
 title.BackgroundTransparency = 1
