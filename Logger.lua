@@ -19,6 +19,52 @@ local function extractId(assetUrl)
     return assetUrl
 end
 
+local function findAnimationsInInstance(instance)
+    for _, desc in ipairs(instance:GetDescendants()) do
+        if desc:IsA("Animation") then
+            local animId = extractId(desc.AnimationId)
+            if not loggedAnimations[animId] and animId ~= "" then
+                loggedAnimations[animId] = true
+                createLogEntry(desc.AnimationId)
+            end
+        end
+        
+        if desc:IsA("Animator") then
+            desc.AnimationPlayed:Connect(function(animTrack)
+                local animId = extractId(animTrack.Animation.AnimationId)
+                if not loggedAnimations[animId] and animId ~= "" then
+                    loggedAnimations[animId] = true
+                    createLogEntry(animTrack.Animation.AnimationId)
+                end
+            end)
+        end
+    end
+end
+
+local function scanAllAnimations()
+    findAnimationsInInstance(game)
+    
+    game.DescendantAdded:Connect(function(desc)
+        if desc:IsA("Animation") then
+            local animId = extractId(desc.AnimationId)
+            if not loggedAnimations[animId] and animId ~= "" then
+                loggedAnimations[animId] = true
+                createLogEntry(desc.AnimationId)
+            end
+        end
+        
+        if desc:IsA("Animator") then
+            desc.AnimationPlayed:Connect(function(animTrack)
+                local animId = extractId(animTrack.Animation.AnimationId)
+                if not loggedAnimations[animId] and animId ~= "" then
+                    loggedAnimations[animId] = true
+                    createLogEntry(animTrack.Animation.AnimationId)
+                end
+            end)
+        end
+    end)
+end
+
 local function playAnimation(id)
     print("Attempting to play animation:", id)
 
@@ -317,55 +363,32 @@ local function createLogEntry(animId)
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, #scrollFrame:GetChildren() * 27)
 end
 
-local function hookAnimations(character)
-    print("Hooking animations for character:", character.Name)
-
-    local humanoid = character:WaitForChild("Humanoid")
-    local animator = humanoid:WaitForChild("Animator")
-
-    print("Got animator:", animator)
-
-    animator.AnimationPlayed:Connect(function(animTrack)
-        local animId = extractId(animTrack.Animation.AnimationId)
-        if not loggedAnimations[animId] then
-            loggedAnimations[animId] = true
-            createLogEntry(animTrack.Animation.AnimationId)
-        end
-    end)
-end
-
-local function hookAllCharacters()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Character then
-            hookAnimations(player.Character)
-        end
-    end
-
-    for _, model in ipairs(workspace:GetChildren()) do
-        if model:IsA("Model") and model:FindFirstChild("Humanoid") then
-            hookAnimations(model)
-        end
-    end
-end
-
 local player = Players.LocalPlayer
 getgenv().AnimLogger = gui
 gui.Parent = game:GetService("CoreGui")
 
 print("Setting up animation logger")
 
+scanAllAnimations()
+
+-- Optional: Keep the character-specific hooks for redundancy
 Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(hookAnimations)
+    player.CharacterAdded:Connect(function(char)
+        findAnimationsInInstance(char)
+    end)
 end)
 
 workspace.ChildAdded:Connect(function(child)
-    if child:IsA("Model") and child:FindFirstChild("Humanoid") then
-        hookAnimations(child)
+    if child:IsA("Model") then
+        findAnimationsInInstance(child)
     end
 end)
 
-hookAllCharacters()
-
-for _, player in ipairs(Players:GetPlayers()) do
-    player.CharacterAdded:Connect(hookAnimations)
+for _, plr in ipairs(Players:GetPlayers()) do
+    if plr.Character then
+        findAnimationsInInstance(plr.Character)
+    end
+    plr.CharacterAdded:Connect(function(char)
+        findAnimationsInInstance(char)
+    end)
 end
