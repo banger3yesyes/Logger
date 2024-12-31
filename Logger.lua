@@ -4,10 +4,10 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 -- Remove any existing logger
-for _, gui in ipairs(game.CoreGui:GetChildren()) do
-    if gui.Name == "AnimationLogger" then
-        gui:Destroy()
-    end
+for _, gui in ipairs(game:GetService("CoreGui"):GetChildren()) do
+	if gui.Name == "AnimationLogger" then
+		gui:Destroy()
+	end
 end
 
 -- Create ScreenGui
@@ -19,7 +19,7 @@ gui.Parent = game.CoreGui
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
 mainFrame.Size = UDim2.new(0, 300, 0, 400)
-mainFrame.Position = UDim2.new(0, 2, 0)
+mainFrame.Position = UDim2.new(0, 0, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 mainFrame.BackgroundTransparency = 0.5
 mainFrame.BorderSizePixel = 0
@@ -81,7 +81,7 @@ clearButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 clearButton.BackgroundTransparency = 1 
 clearButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 clearButton.TextSize = 12
-clearButton.Font = Enum.Font.GothamBold
+clearButton.Font = Enum.Font.SourceSans
 clearButton.BorderSizePixel = 0
 clearButton.Parent = topBar
 
@@ -124,205 +124,220 @@ local startPos = nil
 
 -- Functions
 local function updateScrollingFrame()
-    local contentSize = UIListLayout.AbsoluteContentSize
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y)
+	local contentSize = UIListLayout.AbsoluteContentSize
+	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y)
 end
 
 local function stopAllAnimations(animator)
-    for _, track in pairs(animator:GetPlayingAnimationTracks()) do
-        track:Stop()
-    end
+	for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+		track:Stop()
+	end
 end
 
 local function stopAnimation(animator, animTrack)
-    if activeAnimations[animator] and activeAnimations[animator][animTrack] then
-        activeAnimations[animator][animTrack]:Stop()
-        activeAnimations[animator][animTrack] = nil
-    end
+	if activeAnimations[animator] and activeAnimations[animator][animTrack] then
+		activeAnimations[animator][animTrack]:Stop()
+		activeAnimations[animator][animTrack] = nil
+	end
 end
 
 local function playAnimation(animator, animId)
-    stopAllAnimations(animator)
-    local animation = Instance.new("Animation")
-    animation.AnimationId = animId
-    local animTrack = animator:LoadAnimation(animation)
-    
-    if not activeAnimations[animator] then
-        activeAnimations[animator] = {}
-    end
-    activeAnimations[animator][animId] = animTrack
-    animTrack:Play()
+	stopAllAnimations(animator)
+	local animation = Instance.new("Animation")
+	animation.AnimationId = animId
+	local animTrack = animator:LoadAnimation(animation)
+
+	if not activeAnimations[animator] then
+		activeAnimations[animator] = {}
+	end
+	activeAnimations[animator][animId] = animTrack
+	animTrack:Play()
 end
 
 local function createAnimationEntry(animator, animId, animName)
-    local entry = Instance.new("Frame")
-    entry.Size = UDim2.new(1, -4, 0, 45)
-    entry.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    entry.BackgroundTransparency = 0.4
-    entry.BorderSizePixel = 0
+	local entry = Instance.new("Frame")
+	entry.Size = UDim2.new(1, -4, 0, 45)
+	entry.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	entry.BackgroundTransparency = 0.4
+	entry.BorderSizePixel = 0
 
-    local entryCorner = Instance.new("UICorner")
-    entryCorner.CornerRadius = UDim.new(0, 6)
-    entryCorner.Parent = entry
+	local entryCorner = Instance.new("UICorner")
+	entryCorner.CornerRadius = UDim.new(0, 6)
+	entryCorner.Parent = entry
 
-    local idNumber = animId:match("rbxassetid://(%d+)") or animId:match("roblox.com/asset/%?id=(%d+)") or animId:match("(%d+)") or animId
+	local idNumber = animId:match("rbxassetid://(%d+)") or animId:match("roblox.com/asset/%?id=(%d+)") or animId:match("(%d+)") or animId
 
-    local animLabel = Instance.new("TextBox")
-    animLabel.Size = UDim2.new(0.6, 0, 1, 0)
-    animLabel.Position = UDim2.new(0, 8, 0, 0)
-    animLabel.BackgroundTransparency = 1
-    animLabel.Text = idNumber
-    animLabel.PlaceholderText = ""
-    animLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    animLabel.TextXAlignment = Enum.TextXAlignment.Left
-    animLabel.TextSize = 14
-    animLabel.Font = Enum.Font.Gotham
-    animLabel.TextTruncate = Enum.TextTruncate.AtEnd
-    animLabel.ClearTextOnFocus = false
-    animLabel.TextEditable = false
-    animLabel.ClipsDescendants = true
-    animLabel.Parent = entry
+	local animLabel = Instance.new("TextBox")
+	animLabel.Size = UDim2.new(0.6, 0, 1, 0)
+	animLabel.Position = UDim2.new(0, 8, 0, 0)
+	animLabel.BackgroundTransparency = 1
+	animLabel.Text = idNumber
+	animLabel.PlaceholderText = ""
+	animLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	animLabel.TextXAlignment = Enum.TextXAlignment.Left
+	animLabel.TextSize = 14
+	animLabel.Font = Enum.Font.Gotham
+	animLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	animLabel.ClearTextOnFocus = false
+	animLabel.TextEditable = false
+	animLabel.ClipsDescendants = true
+	animLabel.Parent = entry
 
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(0.6, 0, 0.4, 0)
-    nameLabel.Position = UDim2.new(0, 8, 0.6, 0)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Text = animName or "Animation"
-    nameLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nameLabel.TextSize = 12
-    nameLabel.Font = Enum.Font.Gotham
-    nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
-    nameLabel.Parent = entry
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(0.6, 0, 0.4, 0)
+	nameLabel.Position = UDim2.new(0, 8, 0.6, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Text = animName or "Animation"
+	nameLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+	nameLabel.TextSize = 12
+	nameLabel.Font = Enum.Font.Gotham
+	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	nameLabel.Parent = entry
 
-    local buttonContainer = Instance.new("Frame")
-    buttonContainer.Size = UDim2.new(0.4, -10, 1, 0)
-    buttonContainer.Position = UDim2.new(0.6, 5, 0, 0)
-    buttonContainer.BackgroundTransparency = 1
-    buttonContainer.Parent = entry
+	local buttonContainer = Instance.new("Frame")
+	buttonContainer.Size = UDim2.new(0.4, -10, 1, 0)
+	buttonContainer.Position = UDim2.new(0.6, 5, 0, 0)
+	buttonContainer.BackgroundTransparency = 1
+	buttonContainer.Parent = entry
 
-    local playButton = Instance.new("TextButton")
-    playButton.Size = UDim2.new(0.5, -2, 0.7, 0)
-    playButton.Position = UDim2.new(0, 0, 0.15, 0)
-    playButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    playButton.BackgroundTransparency = 0.3
-    playButton.Text = "Play"
-    playButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    playButton.TextSize = 12
-    playButton.Font = Enum.Font.GothamBold
-    playButton.BorderSizePixel = 0
-    playButton.Parent = buttonContainer
+	local playButton = Instance.new("TextButton")
+	playButton.Size = UDim2.new(0.5, -2, 0.7, 0)
+	playButton.Position = UDim2.new(0, 0, 0.15, 0)
+	playButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	playButton.BackgroundTransparency = 0.3
+	playButton.Text = "Play"
+	playButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	playButton.TextSize = 12
+	playButton.Font = Enum.Font.SourceSans
+	playButton.BorderSizePixel = 0
+	playButton.Parent = buttonContainer
 
-    local stopButton = Instance.new("TextButton")
-    stopButton.Size = UDim2.new(0.5, -2, 0.7, 0)
-    stopButton.Position = UDim2.new(0.5, 2, 0.15, 0)
-    stopButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-    stopButton.Text = "Stop"
-    stopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    stopButton.TextSize = 12
-    stopButton.Font = Enum.Font.GothamBold
-    stopButton.BorderSizePixel = 0
-    stopButton.Parent = buttonContainer
+	local clearButton = Instance.new("TextButton")
+	clearButton.Size = UDim2.new(0.5, -2, 0.7, 0)
+	clearButton.Position = UDim2.new(0.5, 2, 0.15, 0)
+	clearButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+	clearButton.Text = "Clear"
+	clearButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	clearButton.TextSize = 12
+	clearButton.Font = Enum.Font.SourceSans
+	clearButton.BorderSizePixel = 0
+	clearButton.Parent = buttonContainer
 
-    local playCorner = Instance.new("UICorner")
-    playCorner.CornerRadius = UDim.new(0, 4)
-    playCorner.Parent = playButton
+	local playCorner = Instance.new("UICorner")
+	playCorner.CornerRadius = UDim.new(0, 4)
+	playCorner.Parent = playButton
 
-    local stopCorner = Instance.new("UICorner")
-    stopCorner.CornerRadius = UDim.new(0, 4)
-    stopCorner.Parent = stopButton
+	local clearCorner = Instance.new("UICorner")
+	clearCorner.CornerRadius = UDim.new(0, 4)
+	clearCorner.Parent = clearButton
 
-    playButton.MouseButton1Click:Connect(function()
-        playAnimation(animator, animId)
-    end)
+	local isPlaying = false
+	playButton.MouseButton1Click:Connect(function()
+		if isPlaying then
+			stopAnimation(animator, animId)
+			playButton.Text = "Play"
+			playButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+		else
+			playAnimation(animator, animId)
+			playButton.Text = "Stop"
+			playButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+		end
+		isPlaying = not isPlaying
+	end)
 
-    stopButton.MouseButton1Click:Connect(function()
-        stopAnimation(animator, animId)
-    end)
+	clearButton.MouseButton1Click:Connect(function()
+		if isPlaying then
+			stopAnimation(animator, animId)
+		end
+		loggedAnimations[animId] = nil
+		entry:Destroy()
+		updateScrollingFrame()
+	end)
 
-    return entry
+	return entry
 end
 
 local function onAnimationPlayed(animator, animTrack)
-    if not animator or not animTrack then return end
-    local animId = animTrack.Animation.AnimationId
-    if loggedAnimations[animId] then return end
-    
-    loggedAnimations[animId] = true
-    local entry = createAnimationEntry(animator, animId, animTrack.Name)
-    entry.Parent = scrollFrame
-    updateScrollingFrame()
+	if not animator or not animTrack then return end
+	local animId = animTrack.Animation.AnimationId
+	if loggedAnimations[animId] then return end
+
+	loggedAnimations[animId] = true
+	local entry = createAnimationEntry(animator, animId, animTrack.Name)
+	entry.Parent = scrollFrame
+	updateScrollingFrame()
 end
 
 -- Setup dragging
 topBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        isDragging = true
-        dragStart = input.Position
-        startPos = mainFrame.Position
-    end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		isDragging = true
+		dragStart = input.Position
+		startPos = mainFrame.Position
+	end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - dragStart
-        mainFrame.Position = UDim2.new(
-            startPos.X.Scale,
-            startPos.X.Offset + delta.X,
-            startPos.Y.Scale,
-            startPos.Y.Offset + delta.Y
-        )
-    end
+	if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = input.Position - dragStart
+		mainFrame.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+	end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        isDragging = false
-    end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		isDragging = false
+	end
 end)
 
 -- Setup buttons
 minimizeButton.MouseButton1Click:Connect(function()
-    scrollFrame.Visible = not scrollFrame.Visible
-    mainFrame.Size = scrollFrame.Visible and UDim2.new(0, 300, 0, 400) or UDim2.new(0, 300, 0, 30)
+	scrollFrame.Visible = not scrollFrame.Visible
+	mainFrame.Size = scrollFrame.Visible and UDim2.new(0, 300, 0, 400) or UDim2.new(0, 300, 0, 30)
 end)
 
 clearButton.MouseButton1Click:Connect(function()
-    for animator, tracks in pairs(activeAnimations) do
-        for _, track in pairs(tracks) do
-            if track.IsPlaying then
-                track:Stop()
-            end
-        end
-    end
-    activeAnimations = {}
-    
-    for _, child in ipairs(scrollFrame:GetChildren()) do
-        if child:IsA("Frame") then
-            child:Destroy()
-        end
-    end
-    loggedAnimations = {}
-    updateScrollingFrame()
+	for animator, tracks in pairs(activeAnimations) do
+		for _, track in pairs(tracks) do
+			if track.IsPlaying then
+				track:Stop()
+			end
+		end
+	end
+	activeAnimations = {}
+
+	for _, child in ipairs(scrollFrame:GetChildren()) do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	loggedAnimations = {}
+	updateScrollingFrame()
 end)
 
 closeButton.MouseButton1Click:Connect(function()
-    gui:Destroy()
+	gui:Destroy()
 end)
 
 -- Setup animation tracking
 game.Workspace.DescendantAdded:Connect(function(descendant)
-    if descendant:IsA("Animator") then
-        descendant.AnimationPlayed:Connect(function(animTrack)
-            onAnimationPlayed(descendant, animTrack)
-        end)
-    end
+	if descendant:IsA("Animator") then
+		descendant.AnimationPlayed:Connect(function(animTrack)
+			onAnimationPlayed(descendant, animTrack)
+		end)
+	end
 end)
 
 for _, descendant in ipairs(game.Workspace:GetDescendants()) do
-    if descendant:IsA("Animator") then
-        descendant.AnimationPlayed:Connect(function(animTrack)
-            onAnimationPlayed(descendant, animTrack)
-        end)
-    end
+	if descendant:IsA("Animator") then
+		descendant.AnimationPlayed:Connect(function(animTrack)
+			onAnimationPlayed(descendant, animTrack)
+		end)
+	end
 end
