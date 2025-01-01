@@ -1,465 +1,416 @@
-local SoundLogger = {}
-SoundLogger.__index = SoundLogger
+--[[
+Script made by Banger (gen.ed.) on discord, this script is opensourced because i really dont see the issue
+with opensourcing your projects. Hope the people who used this liked it!
+I got a lot of inspiration from edge's audio logger for that audio information thing
+]]
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
-function SoundLogger.new()
-	local self = setmetatable({}, SoundLogger)
-	self.sounds = {}
-	self.connections = {}
-	self.isScanning = false
-	self:createGui()
-	return self
+local BUTTON_SIZE = UDim2.new(0, 120, 0, 30)
+local FRAME_SIZE = UDim2.new(0, 400, 0, 300)
+local LOGGED_SOUNDS = {}
+local SCAN_INTERVAL = 0.5
+local lastScanTime = 0
+
+local old
+old = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    
+    if not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
+        local callString = tostring(self)
+        if callString:lower():find("log") or callString:lower():find("analytics") or callString:lower():find("track") then
+            return
+        end
+    end
+    
+    return old(self, ...)
+end))
+
+local existingGui = game.CoreGui:FindFirstChild("SoundLogger")
+if existingGui then
+    existingGui:Destroy()
 end
 
-function SoundLogger:createGui()
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "SoundLoggerGui"
-	gui.ResetOnSpawn = false
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SoundLogger"
+screenGui.Parent = game:GetService("CoreGui")
 
-	local mainFrame = Instance.new("Frame")
-	mainFrame.Name = "MainFrame"
-	mainFrame.Size = UDim2.new(0, 400, 0, 300)
-	mainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
-	mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	mainFrame.BackgroundTransparency = 0.5
-	mainFrame.BorderSizePixel = 0
-	mainFrame.Parent = gui
-	
-	local drag = Instance.new("UIDragDetector")
-	drag.Parent = mainFrame
-	
-	local UICorner = Instance.new("UICorner")
-	UICorner.CornerRadius = UDim.new(0, 4)
-	UICorner.Parent = mainFrame
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = FRAME_SIZE
+mainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
+mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+mainFrame.BackgroundTransparency = 0.6
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
 
-	local dragging
-	local dragInput
-	local dragStart
-	local startPos
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 5)
+Corner.Parent = mainFrame
 
-	local function update(input)
-		local delta = input.Position - dragStart
-		mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-	end
+local title = Instance.new("TextLabel")
+title.Name = "Title"
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+title.BackgroundTransparency = 1
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Text = "Sound Logger"
+title.TextSize = 18
+title.Font = Enum.Font.SourceSansBold
+title.Parent = mainFrame
 
-	mainFrame.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			dragging = true
-			dragStart = input.Position
-			startPos = mainFrame.Position
-		end
-	end)
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 20, 0, 20)
+closeButton.Position = UDim2.new(1, -25, 0, 5)
+closeButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+closeButton.BackgroundTransparency = 1
+closeButton.TextColor3 = Color3.fromRGB(255,13,13)
+closeButton.Text = "X"
+closeButton.Parent = mainFrame
+closeButton.MouseButton1Click:Connect(function()
+    screenGui:Destroy()
+end)
 
-	mainFrame.InputChanged:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseMovement then
-			dragInput = input
-		end
-	end)
+local function CreateButton(text, position)
+    local button = Instance.new("TextButton")
+    button.Name = text:gsub(" ", "") .. "Button"
+    button.Size = BUTTON_SIZE
+    button.Position = position
+    button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    button.BackgroundTransparency = 0.4
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.Text = text
+    button.TextSize = 14
+    button.Font = Enum.Font.SourceSansBold
+    button.AutoButtonColor = true
+    button.Parent = mainFrame
 
-	game:GetService("UserInputService").InputChanged:Connect(function(input)
-		if input == dragInput and dragging then
-			update(input)
-		end
-	end)
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 5)
+    buttonCorner.Parent = button
 
-	game:GetService("UserInputService").InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			dragging = false
-		end
-	end)
-
-	local title = Instance.new("TextLabel")
-	title.Name = "Title"
-	title.Size = UDim2.new(1, 0, 0, 30)
-	title.Position = UDim2.new(0, 0, 0, 0)
-	title.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-	title.BackgroundTransparency = 1
-	title.TextColor3 = Color3.fromRGB(255, 255, 255)
-	title.Text = "Sound Logger by Banger"
-	title.TextSize = 18
-	title.Font = Enum.Font.SourceSans
-	title.Parent = mainFrame
-
-	local buttonsFrame = Instance.new("Frame")
-	buttonsFrame.Name = "ButtonsFrame"
-	buttonsFrame.Size = UDim2.new(1, 0, 0, 40)
-	buttonsFrame.Position = UDim2.new(0, 0, 0, 35)
-	buttonsFrame.BackgroundTransparency = 1
-	buttonsFrame.Parent = mainFrame
-
-	local buttonNames = {"Scan All", "Workspace", "Auto Scan", "Stop", "Clear"}
-	local buttonFunctions = {
-		self.scanEverything,
-		self.scanWorkspace,
-		self.autoScan,
-		self.stopScanning,
-		self.clear
-	}
-
-	for i, name in ipairs(buttonNames) do
-		local button = Instance.new("TextButton")
-		button.Name = name:gsub(" ", "") .. "Button"
-		button.Size = UDim2.new(0.18, 0, 0, 30)
-		button.Position = UDim2.new(0.02 + (0.2 * (i-1)), 0, 0, 0)
-		button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-		button.BackgroundTransparency = 0.4
-		button.TextColor3 = Color3.fromRGB(255, 255, 255)
-		button.Text = name
-		button.TextSize = 14
-		button.Font = Enum.Font.Gotham
-		button.Parent = buttonsFrame
-
-		local UICorner2 = Instance.new("UICorner")
-		UICorner2.CornerRadius = UDim.new(0, 4)
-		UICorner2.Parent = button
-
-		button.MouseEnter:Connect(function()
-			button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-		end)
-		button.MouseLeave:Connect(function()
-			button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-		end)
-
-		button.MouseButton1Click:Connect(function()
-			buttonFunctions[i](self)
-			self:updateSoundList()
-		end)
-	end
-
-	local scrollFrame = Instance.new("ScrollingFrame")
-	scrollFrame.Name = "SoundList"
-	scrollFrame.Size = UDim2.new(1, -20, 1, -85)
-	scrollFrame.Position = UDim2.new(0, 10, 0, 80)
-	scrollFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	scrollFrame.BackgroundTransparency = 0.7
-	scrollFrame.BorderSizePixel = 0
-	scrollFrame.ScrollBarThickness = 8
-	scrollFrame.Parent = mainFrame
-
-	local UICorner3 = Instance.new("UICorner")
-	UICorner3.CornerRadius = UDim.new(0, 4)
-	UICorner3.Parent = scrollFrame
-
-	local closeButton = Instance.new("TextButton")
-	closeButton.Size = UDim2.new(0, 20, 0, 20)
-	closeButton.Position = UDim2.new(1, -25, 0, 5)
-	closeButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-	closeButton.BackgroundTransparency = 0.4
-	closeButton.Text = "X"
-	closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	closeButton.TextSize = 14
-	closeButton.Font = Enum.Font.SourceSans
-	closeButton.Parent = mainFrame
-
-	local UICorner6 = Instance.new("UICorner")
-	UICorner6.CornerRadius = UDim.new(0, 4)
-	UICorner6.Parent = closeButton
-
-	closeButton.MouseButton1Click:Connect(function()
-		gui:Destroy()
-	end)
-
-	closeButton.MouseEnter:Connect(function()
-		closeButton.BackgroundTransparency = 0.2
-	end)
-	closeButton.MouseLeave:Connect(function()
-		closeButton.BackgroundTransparency = 0.4
-	end)
-
-	local minimizeButton = Instance.new("TextButton")
-	minimizeButton.Size = UDim2.new(0, 20, 0, 20)
-	minimizeButton.Position = UDim2.new(1, -50, 0, 5)
-	minimizeButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	minimizeButton.BackgroundTransparency = 0.4
-	minimizeButton.Text = "-"
-	minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	minimizeButton.TextSize = 14
-	minimizeButton.Font = Enum.Font.SourceSans
-	minimizeButton.Parent = mainFrame
-
-	local UICorner7 = Instance.new("UICorner")
-	UICorner7.CornerRadius = UDim.new(0, 4)
-	UICorner7.Parent = minimizeButton
-
-	local isMinimized = false
-	minimizeButton.MouseButton1Click:Connect(function()
-		isMinimized = not isMinimized
-		if isMinimized then
-			local originalSize = mainFrame.Size
-			local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
-			local tween = game:GetService("TweenService"):Create(mainFrame, tweenInfo, {
-				Size = UDim2.new(0, originalSize.X.Offset, 0, 35)
-			})
-
-			scrollFrame.Visible = false
-			buttonsFrame.Visible = false
-			tween:Play()
-		else
-			local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
-			local tween = game:GetService("TweenService"):Create(mainFrame, tweenInfo, {
-				Size = UDim2.new(0, 400, 0, 300)
-			})
-
-			tween.Completed:Connect(function()
-				scrollFrame.Visible = true
-				buttonsFrame.Visible = true
-			end)
-
-			tween:Play()
-		end
-	end)
-
-	minimizeButton.MouseEnter:Connect(function()
-		minimizeButton.BackgroundTransparency = 0.2
-	end)
-	minimizeButton.MouseLeave:Connect(function()
-		minimizeButton.BackgroundTransparency = 0.4
-	end)
-
-	self.gui = gui
-	self.scrollFrame = scrollFrame
-
-	local Player = game:GetService("Players")
-	gui.Parent = game:GetService("CoreGui")
+    return button
 end
 
-function SoundLogger:updateSoundList()
-	for _, child in ipairs(self.scrollFrame:GetChildren()) do
-		child:Destroy()
-	end
+local autoScanButton = CreateButton("Auto Scan", UDim2.new(0, 10, 0, 40))
+local clearAllButton = CreateButton("Clear All", UDim2.new(0, 140, 0, 40))
+local scanAllButton = CreateButton("Scan All", UDim2.new(0, 270, 0, 40))
 
-	local function getNumericID(assetId)
-		return assetId:match("%d+") or assetId
-	end
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Name = "SoundList"
+scrollFrame.Size = UDim2.new(1, -20, 1, -90)
+scrollFrame.Position = UDim2.new(0, 10, 0, 80)
+scrollFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.BorderSizePixel = 0
+scrollFrame.ScrollBarThickness = 6
+scrollFrame.Parent = mainFrame
 
-	local yPos = 0
-	for i, soundData in ipairs(self.sounds) do
-		local container = Instance.new("Frame")
-		container.Name = "SoundItem_" .. i
-		container.Size = UDim2.new(1, -50, 0, 60)
-		container.Position = UDim2.new(0, 5, 0, yPos)
-		container.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-		container.BackgroundTransparency = 0.4
-		container.BorderSizePixel = 0
-		container.Parent = self.scrollFrame
+local function CreateSoundInfoGui(sound)
+    local existingInfo = game.CoreGui:FindFirstChild("SoundInfo")
+    if existingInfo then
+        existingInfo:Destroy()
+    end
 
-		local UICorner4 = Instance.new("UICorner")
-		UICorner4.CornerRadius = UDim.new(0, 4)
-		UICorner4.Parent = container
+    local infoGui = Instance.new("ScreenGui")
+    infoGui.Name = "SoundInfo"
+    infoGui.Parent = game:GetService("CoreGui")
 
-		local playButton = Instance.new("TextButton")
-		playButton.Size = UDim2.new(0, 35, 0, 35)
-		playButton.Position = UDim2.new(1, 5, 0.5, -17.5)
-		playButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-		playButton.BackgroundTransparency = 0.4
-		playButton.Text = "▶"
-		playButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-		playButton.TextSize = 18
-		playButton.Font = Enum.Font.GothamBold
-		playButton.Parent = container
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 300, 0, 200)
+    frame.Position = UDim2.new(0.5, -150, 0.5, -100)
+    frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    frame.BackgroundTransparency = 0.5
+    frame.BorderSizePixel = 0
+    frame.Active = true
+    frame.Draggable = true
+    frame.Parent = infoGui
 
-		local UICorner5 = Instance.new("UICorner")
-		UICorner5.CornerRadius = UDim.new(0, 4)
-		UICorner5.Parent = playButton
+    local Corner4 = Instance.new("UICorner")
+    Corner4.CornerRadius = UDim.new(0, 4)
+    Corner4.Parent = frame
 
-		local originalLooped = soundData.sound.Looped
-		local isPlaying = false
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    title.BackgroundTransparency = 1
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Text = "Sound Information"
+    title.TextSize = 18
+    title.Font = Enum.Font.SourceSansBold
+    title.Parent = frame
 
-		playButton.MouseButton1Click:Connect(function()
-			if isPlaying then
-				soundData.sound:Stop()
-				soundData.sound.Looped = originalLooped
-				playButton.Text = "▶"
-				playButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-			else
-				for _, otherItem in ipairs(self.scrollFrame:GetChildren()) do
-					if otherItem:IsA("Frame") and otherItem ~= container then
-						local otherButton = otherItem:FindFirstChild("TextButton")
-						if otherButton then
-							local otherSoundData = self.sounds[tonumber(otherItem.Name:match("%d+"))]
-							if otherSoundData then
-								otherSoundData.sound:Stop()
-								otherSoundData.sound.Looped = originalLooped
-								otherButton.Text = "▶"
-								otherButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-							end
-						end
-					end
-				end
+    local infoText = Instance.new("TextLabel")
+    infoText.Size = UDim2.new(1, -20, 0, 100)
+    infoText.Position = UDim2.new(0, 10, 0, 40)
+    infoText.BackgroundTransparency = 1
+    infoText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    infoText.Text = string.format(
+        "Name: %s\nVolume: %.2f\nTimeLength: %.2f\nIsPlaying: %s",
+        sound.Name,
+        sound.Volume,
+        sound.TimeLength,
+        tostring(sound.IsPlaying)
+    )
+    infoText.TextXAlignment = Enum.TextXAlignment.Left
+    infoText.TextYAlignment = Enum.TextYAlignment.Top
+    infoText.Parent = frame
 
-				soundData.sound.Looped = true
-				soundData.sound:Play()
-				playButton.Text = ">"
-				playButton.BackgroundColor3 = Color3.fromRGB(40, 120, 40)
-			end
-			isPlaying = not isPlaying
-		end)
+    local idBox = Instance.new("TextBox")
+    idBox.Size = UDim2.new(1, -20, 0, 30)
+    idBox.Position = UDim2.new(0, 10, 0, 150)
+    idBox.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    idBox.BackgroundTransparency = 0.4
+    idBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    idBox.Text = tostring(sound.SoundId)
+    idBox.TextEditable = false
+    idBox.ClearTextOnFocus = false
+    idBox.Parent = frame
 
-		playButton.MouseEnter:Connect(function()
-			playButton.BackgroundTransparency = 0.2
-		end)
-		playButton.MouseLeave:Connect(function()
-			playButton.BackgroundTransparency = 0.4
-		end)
+    local Corner5 = Instance.new("UICorner")
+    Corner5.CornerRadius = UDim.new(0, 4)
+    Corner5.Parent = idBox
 
-		local nameLabel = Instance.new("TextLabel")
-		nameLabel.Size = UDim2.new(1, -10, 0, 20)
-		nameLabel.Position = UDim2.new(0, 5, 0, 5)
-		nameLabel.BackgroundTransparency = 1
-		nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-		nameLabel.Text = "Name: " .. soundData.name
-		nameLabel.TextSize = 14
-		nameLabel.Font = Enum.Font.Gotham
-		nameLabel.Parent = container
+    local closeButton = Instance.new("TextButton")
+    closeButton.Size = UDim2.new(0, 20, 0, 20)
+    closeButton.Position = UDim2.new(1, -25, 0, 5)
+    closeButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    closeButton.BackgroundTransparency = 1
+    closeButton.TextColor3 = Color3.fromRGB(255, 13, 13)
+    closeButton.Text = "X"
+    closeButton.Parent = frame
 
-		local idBox = Instance.new("TextBox")
-		idBox.Size = UDim2.new(1, -10, 0, 20)
-		idBox.Position = UDim2.new(0, 5, 0, 25)
-		idBox.BackgroundTransparency = 1
-		idBox.TextColor3 = Color3.fromRGB(200, 200, 200)
-		idBox.TextXAlignment = Enum.TextXAlignment.Left
-		idBox.Text = getNumericID(soundData.id)
-		idBox.TextEditable = false
-		idBox.ClearTextOnFocus = false
-		idBox.TextSize = 12
-		idBox.Font = Enum.Font.Gotham
-		idBox.Parent = container
-
-		local statusLabel = Instance.new("TextLabel")
-		statusLabel.Size = UDim2.new(1, -10, 0, 20)
-		statusLabel.Position = UDim2.new(0, 5, 0, 45)
-		statusLabel.BackgroundTransparency = 1
-		statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-		statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-		local timeAgo = soundData.timeLogged and os.time() - soundData.timeLogged or 0
-		statusLabel.Text = string.format("Parent: %s | Volume: %.1f | %s ago", 
-			soundData.parent, soundData.volume, timeAgo .. "s")
-		statusLabel.TextSize = 12
-		statusLabel.Font = Enum.Font.Gotham
-		statusLabel.Parent = container
-
-		yPos = yPos + 65
-	end
-
-	self.scrollFrame.CanvasSize = UDim2.new(0, 0, 0, yPos)
+    closeButton.MouseButton1Click:Connect(function()
+        infoGui:Destroy()
+    end)
 end
 
-local function scanInstance(self, instance)
-	for _, child in ipairs(instance:GetDescendants()) do
-		if child:IsA("Sound") then
-			table.insert(self.sounds, {
-				sound = child,
-				name = child.Name,
-				id = child.SoundId,
-				parent = child.Parent.Name,
-				volume = child.Volume,
-				playing = child.Playing
-			})
-		end
-	end
-
-	local connection = instance.DescendantAdded:Connect(function(child)
-		if child:IsA("Sound") then
-			table.insert(self.sounds, {
-				sound = child,
-				name = child.Name,
-				id = child.SoundId,
-				parent = child.Parent.Name,
-				volume = child.Volume,
-				playing = child.Playing
-			})
-			self:updateSoundList()
-		end
-	end)
-	table.insert(self.connections, connection)
-	self:updateSoundList()
+local function PlaySound(soundId)
+    local sound = Instance.new("Sound")
+    sound.SoundId = soundId
+    sound.Volume = 4
+    sound.Parent = game:GetService("CoreGui")
+    sound:Play()
+    sound.Ended:Connect(function()
+        sound:Destroy()
+    end)
 end
 
-function SoundLogger:scanEverything()
-	if self.isScanning then
-		self:stopScanning()
-	end
-	self.isScanning = true
-	scanInstance(self, game)
+local function ScanSound(sound)
+    local success, result = pcall(function()
+        return {
+            Name = sound.Name,
+            SoundId = sound.SoundId,
+            Volume = sound.Volume,
+            IsPlaying = sound.IsPlaying,
+            TimeLength = sound.TimeLength
+        }
+    end)
+    
+    if success then
+        return result
+    end
+    return nil
 end
 
-function SoundLogger:scanWorkspace()
-	if self.isScanning then
-		self:stopScanning()
-	end
-	self.isScanning = true
-	scanInstance(self, game.Workspace)
+local function LogSound(sound)
+    local soundInfo = ScanSound(sound)
+    if not soundInfo or not sound:IsA("Sound") or table.find(LOGGED_SOUNDS, soundInfo.SoundId) then
+        return
+    end
+
+    table.insert(LOGGED_SOUNDS, soundInfo.SoundId)
+    
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, -10, 0, 30)
+    container.Position = UDim2.new(0, 5, 0, (#LOGGED_SOUNDS - 1) * 35)
+    container.BackgroundTransparency = 1
+    container.Parent = scrollFrame
+
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, -75, 1, 0)
+    button.Position = UDim2.new(0, 0, 0, 0)
+    button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    button.BackgroundTransparency = 0.4
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.Text = soundInfo.SoundId
+    button.TextXAlignment = Enum.TextXAlignment.Left
+    button.TextSize = 14
+    button.Parent = container
+
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 4)
+    buttonCorner.Parent = button
+
+    local playButton = Instance.new("TextButton")
+    playButton.Size = UDim2.new(0, 30, 1, 0)
+    playButton.Position = UDim2.new(1, -65, 0, 0)
+    playButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    playButton.BackgroundTransparency = 0.4
+    playButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    playButton.Text = "▶"
+    playButton.TextSize = 14
+    playButton.Parent = container
+
+    local playCorner = Instance.new("UICorner")
+    playCorner.CornerRadius = UDim.new(0, 4)
+    playCorner.Parent = playButton
+
+    local deleteButton = Instance.new("TextButton")
+    deleteButton.Size = UDim2.new(0, 30, 1, 0)
+    deleteButton.Position = UDim2.new(1, -30, 0, 0)
+    deleteButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    deleteButton.BackgroundTransparency = 0.4
+    deleteButton.TextColor3 = Color3.fromRGB(255, 13, 13)
+    deleteButton.Text = "×"
+    deleteButton.TextSize = 20
+    deleteButton.Parent = container
+
+    local deleteCorner = Instance.new("UICorner")
+    deleteCorner.CornerRadius = UDim.new(0, 4)
+    deleteCorner.Parent = deleteButton
+
+    button.MouseButton1Click:Connect(function()
+        CreateSoundInfoGui(sound)
+    end)
+
+    playButton.MouseButton1Click:Connect(function()
+        PlaySound(soundInfo.SoundId)
+    end)
+
+    deleteButton.MouseButton1Click:Connect(function()
+        for i, id in ipairs(LOGGED_SOUNDS) do
+            if id == soundInfo.SoundId then
+                table.remove(LOGGED_SOUNDS, i)
+                break
+            end
+        end
+        
+        container:Destroy()
+        
+        local yOffset = 0
+        for _, child in ipairs(scrollFrame:GetChildren()) do
+            if child:IsA("Frame") then
+                child.Position = UDim2.new(0, 5, 0, yOffset)
+                yOffset = yOffset + 35
+            end
+        end
+        
+        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, #LOGGED_SOUNDS * 35)
+    end)
+
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, #LOGGED_SOUNDS * 35)
 end
 
-function SoundLogger:autoScan()
-	if self.isScanning then
-		self:stopScanning()
-	end
-	self.isScanning = true
-
-	local function onSoundPlayed(sound)
-		if not sound:IsA("Sound") then return end
-
-		for _, soundData in ipairs(self.sounds) do
-			if soundData.sound == sound then
-				return
-			end
-		end
-
-		table.insert(self.sounds, {
-			sound = sound,
-			name = sound.Name,
-			id = sound.SoundId,
-			parent = sound.Parent.Name,
-			volume = sound.Volume,
-			playing = sound.Playing,
-			timeLogged = os.time()
-		})
-		self:updateSoundList()
-	end
-
-	for _, instance in ipairs(game:GetDescendants()) do
-		if instance:IsA("Sound") then
-			local connection = instance:GetPropertyChangedSignal("Playing"):Connect(function()
-				if instance.Playing then
-					onSoundPlayed(instance)
-				end
-			end)
-			table.insert(self.connections, connection)
-		end
-	end
-
-	local connection = game.DescendantAdded:Connect(function(instance)
-		if instance:IsA("Sound") then
-			local connection = instance:GetPropertyChangedSignal("Playing"):Connect(function()
-				if instance.Playing then
-					onSoundPlayed(instance)
-				end
-			end)
-			table.insert(self.connections, connection)
-		end
-	end)
-	table.insert(self.connections, connection)
+local function IsPlayerSound(sound)
+    local player = Players.LocalPlayer
+    if not player then return false end
+    
+    local character = player.Character
+    if character then
+        if sound:IsDescendantOf(character) then
+            return true
+        end
+    end
+    
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack and sound:IsDescendantOf(backpack) then
+        return true
+    end
+    
+    return false
 end
 
-function SoundLogger:stopScanning()
-	self.isScanning = false
-	for _, connection in ipairs(self.connections) do
-		connection:Disconnect()
-	end
-	self.connections = {}
+local function SafeScan()
+    local currentTime = tick()
+    if currentTime - lastScanTime < SCAN_INTERVAL then
+        return
+    end
+    lastScanTime = currentTime
+
+    local player = Players.LocalPlayer
+    if not player or not player.Character then return end
+
+    local success, result = pcall(function()
+        local soundsToCheck = {}
+        
+        if player.Character then
+            for _, item in ipairs(player.Character:GetDescendants()) do
+                if item:IsA("Sound") then
+                    table.insert(soundsToCheck, item)
+                end
+            end
+        end
+        
+        if player:FindFirstChild("Backpack") then
+            for _, item in ipairs(player.Backpack:GetDescendants()) do
+                if item:IsA("Sound") then
+                    table.insert(soundsToCheck, item)
+                end
+            end
+        end
+        
+        return soundsToCheck
+    end)
+    
+    if success and result then
+        for _, sound in ipairs(result) do
+            if sound.IsPlaying then
+                LogSound(sound)
+            end
+        end
+    end
 end
 
-function SoundLogger:getSounds()
-	return self.sounds
-end
+local autoScanEnabled = false
+local autoScanConnection
 
-function SoundLogger:clear()
-	self.sounds = {}
-	self:updateSoundList()
-end
+autoScanButton.MouseButton1Click:Connect(function()
+    autoScanEnabled = not autoScanEnabled
+    autoScanButton.BackgroundColor3 = autoScanEnabled and 
+        Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
+    
+    if autoScanEnabled then
+        if autoScanConnection then
+            autoScanConnection:Disconnect()
+        end
+        
+        local lastUpdate = 0
+        autoScanConnection = RunService.RenderStepped:Connect(function()
+            if not autoScanEnabled then return end
+            
+            local now = tick()
+            if now - lastUpdate >= SCAN_INTERVAL then
+                lastUpdate = now
+                SafeScan()
+            end
+        end)
+    else
+        if autoScanConnection then
+            autoScanConnection:Disconnect()
+        end
+    end
+end)
 
-local logger = SoundLogger.new()
-return logger
+clearAllButton.MouseButton1Click:Connect(function()
+    table.clear(LOGGED_SOUNDS)
+    for _, child in ipairs(scrollFrame:GetChildren()) do
+        child:Destroy()
+    end
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+end)
+
+scanAllButton.MouseButton1Click:Connect(function()
+    SafeScan()
+end)
+
+screenGui.AncestryChanged:Connect(function(_, parent)
+    if not parent and autoScanConnection then
+        autoScanConnection:Disconnect()
+    end
+end)
