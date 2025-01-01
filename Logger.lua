@@ -23,7 +23,7 @@ end
 -- Create ScreenGui
 local gui = Instance.new("ScreenGui")
 gui.Name = "AnimationLogger"
-gui.Parent = Players.LocalPlayer.PlayerGui
+gui.Parent = game:GetService("CoreGui")
 
 -- Create main frame
 local mainFrame = Instance.new("Frame")
