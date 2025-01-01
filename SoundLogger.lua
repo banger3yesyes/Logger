@@ -23,7 +23,10 @@ function SoundLogger:createGui()
 	mainFrame.BackgroundTransparency = 0.5
 	mainFrame.BorderSizePixel = 0
 	mainFrame.Parent = gui
-
+	
+	local drag = Instance.new("UIDragDetector")
+	drag.Parent = mainFrame
+	
 	local UICorner = Instance.new("UICorner")
 	UICorner.CornerRadius = UDim.new(0, 4)
 	UICorner.Parent = mainFrame
@@ -218,7 +221,7 @@ function SoundLogger:createGui()
 	self.scrollFrame = scrollFrame
 
 	local Player = game:GetService("Players")
-	gui.Parent = Player.LocalPlayer.PlayerGui
+	gui.Parent = game:GetService("CoreGui")
 end
 
 function SoundLogger:updateSoundList()
