@@ -61,7 +61,7 @@ topCorner.Parent = topBar
 local title = Instance.new("TextLabel")
 title.Name = "Title"
 title.Text = "Animation Logger by Banger"
-title.Size = UDim2.new(0.7, 0, 1, 0)
+title.Size = UDim2.new(0.4, 0, 1, 0)
 title.Position = UDim2.new(0, 10, 0, 0)
 title.BackgroundTransparency = 1
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -69,6 +69,31 @@ title.TextXAlignment = Enum.TextXAlignment.Left
 title.TextSize = 14
 title.Font = Enum.Font.SourceSans
 title.Parent = topBar
+
+-- Create tab buttons container
+local tabContainer = Instance.new("Frame")
+tabContainer.Name = "TabContainer"
+tabContainer.Size = UDim2.new(0.3, 0, 1, 0)
+tabContainer.Position = UDim2.new(0.4, 0, 0, 0)
+tabContainer.BackgroundTransparency = 1
+tabContainer.Parent = topBar
+
+-- Create Animation tab
+local animTab = Instance.new("TextButton")
+animTab.Name = "AnimTab"
+animTab.Text = "Animation"
+animTab.Size = UDim2.new(0.5, -2, 0.8, 0)
+animTab.Position = UDim2.new(0, 0, 0.1, 0)
+animTab.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+animTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+animTab.TextSize = 12
+animTab.Font = Enum.Font.GothamBold
+animTab.BorderSizePixel = 0
+animTab.Parent = tabContainer
+
+local animTabCorner = Instance.new("UICorner")
+animTabCorner.CornerRadius = UDim.new(0, 4)
+animTabCorner.Parent = animTab
 
 -- Create buttons
 local minimizeButton = Instance.new("TextButton")
@@ -110,20 +135,34 @@ closeButton.TextSize = 20
 closeButton.Font = Enum.Font.GothamBold
 closeButton.Parent = topBar
 
--- Create scroll frame
-local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Name = "ScrollFrame"
-scrollFrame.Size = UDim2.new(1, -10, 1, -35)
-scrollFrame.Position = UDim2.new(0, 5, 0, 32)
-scrollFrame.BackgroundTransparency = 1
-scrollFrame.BorderSizePixel = 0
-scrollFrame.ScrollBarThickness = 4
-scrollFrame.Parent = mainFrame
+-- Create content frames
+local animContent = Instance.new("ScrollingFrame")
+animContent.Name = "AnimContent"
+animContent.Size = UDim2.new(1, -10, 1, -35)
+animContent.Position = UDim2.new(0, 5, 0, 32)
+animContent.BackgroundTransparency = 1
+animContent.BorderSizePixel = 0
+animContent.ScrollBarThickness = 4
+animContent.Visible = true
+animContent.Parent = mainFrame
 
-local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Parent = scrollFrame
-UIListLayout.Padding = UDim.new(0, 5)
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+local animListLayout = Instance.new("UIListLayout")
+animListLayout.Parent = animContent
+animListLayout.Padding = UDim.new(0, 5)
+animListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- Tab switching logic
+local function switchTab(tabName)
+    if tabName == "Animation" then
+        animTab.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        animTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+        animContent.Visible = true
+    end
+end
+
+animTab.MouseButton1Click:Connect(function()
+    switchTab("Animation")
+end)
 
 -- Variables
 local loggedAnimations = {}
@@ -134,36 +173,31 @@ local startPos = nil
 
 -- Functions
 local function updateScrollingFrame()
-	local contentSize = UIListLayout.AbsoluteContentSize
-	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y)
+	local contentSize = animListLayout.AbsoluteContentSize
+	animContent.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y)
 end
 
 local function stopAllAnimations()
-	local animator = getLocalAnimator()
-	if animator then
-		for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+	for _, animator in pairs(activeAnimations) do
+		for _, track in pairs(animator) do
 			track:Stop()
 		end
 	end
 end
 
-local function stopAnimation(_, animTrack)
-	local animator = getLocalAnimator()
-	if animator and activeAnimations[animator] and activeAnimations[animator][animTrack] then
+local function stopAnimation(animator, animTrack)
+	if activeAnimations[animator] and activeAnimations[animator][animTrack] then
 		activeAnimations[animator][animTrack]:Stop()
 		activeAnimations[animator][animTrack] = nil
 	end
 end
 
-local function playAnimation(_, animId)
-	local animator = getLocalAnimator()
-	if not animator then return end
-	
+local function playAnimation(animator, animId)
 	stopAllAnimations()
-	local animation = Instance.new("Animation")
-	animation.AnimationId = animId
-	local animTrack = animator:LoadAnimation(animation)
-
+	
+	local animTrack = animator:LoadAnimation(Instance.new("Animation", animator))
+	animTrack.Animation.AnimationId = animId
+	
 	if not activeAnimations[animator] then
 		activeAnimations[animator] = {}
 	end
@@ -282,7 +316,7 @@ local function onAnimationPlayed(animator, animTrack)
 
 	loggedAnimations[animId] = true
 	local entry = createAnimationEntry(animator, animId, animTrack.Name)
-	entry.Parent = scrollFrame
+	entry.Parent = animContent
 	updateScrollingFrame()
 end
 
@@ -315,13 +349,13 @@ end)
 
 -- Setup buttons
 minimizeButton.MouseButton1Click:Connect(function()
-	scrollFrame.Visible = not scrollFrame.Visible
-	mainFrame.Size = scrollFrame.Visible and UDim2.new(0, 300, 0, 400) or UDim2.new(0, 300, 0, 30)
+	animContent.Visible = not animContent.Visible
+	mainFrame.Size = animContent.Visible and UDim2.new(0, 300, 0, 400) or UDim2.new(0, 300, 0, 30)
 end)
 
 clearButton.MouseButton1Click:Connect(function()
-	for animator, tracks in pairs(activeAnimations) do
-		for _, track in pairs(tracks) do
+	for _, animator in pairs(activeAnimations) do
+		for _, track in pairs(animator) do
 			if track.IsPlaying then
 				track:Stop()
 			end
@@ -329,7 +363,7 @@ clearButton.MouseButton1Click:Connect(function()
 	end
 	activeAnimations = {}
 
-	for _, child in ipairs(scrollFrame:GetChildren()) do
+	for _, child in ipairs(animContent:GetChildren()) do
 		if child:IsA("Frame") then
 			child:Destroy()
 		end
