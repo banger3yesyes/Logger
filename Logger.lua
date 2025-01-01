@@ -23,7 +23,7 @@ end
 -- Create ScreenGui
 local gui = Instance.new("ScreenGui")
 gui.Name = "AnimationLogger"
-gui.Parent = game:GetService("CoreGui")
+gui.Parent = Players.LocalPlayer.PlayerGui
 
 -- Create main frame
 local mainFrame = Instance.new("Frame")
@@ -81,10 +81,11 @@ tabContainer.Parent = topBar
 -- Create Animation tab
 local animTab = Instance.new("TextButton")
 animTab.Name = "AnimTab"
-animTab.Text = "Animation"
+animTab.Text = ""
 animTab.Size = UDim2.new(0.5, -2, 0.8, 0)
 animTab.Position = UDim2.new(0, 0, 0.1, 0)
 animTab.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+animTab.BackgroundTransparency = 1
 animTab.TextColor3 = Color3.fromRGB(255, 255, 255)
 animTab.TextSize = 12
 animTab.Font = Enum.Font.GothamBold
@@ -193,10 +194,18 @@ local function stopAnimation(animator, animTrack)
 end
 
 local function playAnimation(animator, animId)
+	if not animator or not animId or animId == "" then return end
+	
 	stopAllAnimations()
 	
-	local animTrack = animator:LoadAnimation(Instance.new("Animation", animator))
-	animTrack.Animation.AnimationId = animId
+	-- Ensure the animation ID is properly formatted
+	if not animId:match("^rbxassetid://") then
+		animId = "rbxassetid://" .. animId:match("%d+")
+	end
+	
+	local animation = Instance.new("Animation")
+	animation.AnimationId = animId
+	local animTrack = animator:LoadAnimation(animation)
 	
 	if not activeAnimations[animator] then
 		activeAnimations[animator] = {}
@@ -310,8 +319,9 @@ local function createAnimationEntry(animator, animId, animName)
 end
 
 local function onAnimationPlayed(animator, animTrack)
-	if not animator or not animTrack then return end
+	if not animator or not animTrack or not animTrack.Animation then return end
 	local animId = animTrack.Animation.AnimationId
+	if not animId or animId == "" then return end
 	if loggedAnimations[animId] then return end
 
 	loggedAnimations[animId] = true
