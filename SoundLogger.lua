@@ -2,6 +2,9 @@
 Script made by Banger (gen.ed.) on discord, this script is opensourced because i really dont see the issue
 with opensourcing your projects. Hope the people who used this liked it!
 I got a lot of inspiration from edge's audio logger for that audio information thing
+
+UPDATE LOG:
+Fixed Scan All not working, might be a bit laggy.
 ]]
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
