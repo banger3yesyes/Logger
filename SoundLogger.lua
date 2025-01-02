@@ -79,6 +79,79 @@ closeButton.MouseButton1Click:Connect(function()
     screenGui:Destroy()
 end)
 
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Size = UDim2.new(0, 20, 0, 20)
+minimizeButton.Position = UDim2.new(1, -50, 0, 5)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+minimizeButton.BackgroundTransparency = 1
+minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeButton.Text = "−"
+minimizeButton.TextSize = 17
+minimizeButton.Parent = mainFrame
+
+local isMinimized = false
+local originalSize = mainFrame.Size
+local minimizedSize = UDim2.new(0, 400, 0, 30)
+
+local tweenInfo = TweenInfo.new(
+    0.3,
+    Enum.EasingStyle.Quad,
+    Enum.EasingDirection.Out
+)
+
+minimizeButton.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    
+    if isMinimized then
+        local sizeTween = TweenService:Create(mainFrame, tweenInfo, {
+            Size = minimizedSize
+        })
+        sizeTween:Play()
+        
+        minimizeButton.Text = "+"
+        for _, child in ipairs(mainFrame:GetChildren()) do
+            if child ~= title and child ~= minimizeButton and child ~= closeButton and child ~= Corner then
+                local transparencyTween = TweenService:Create(child, tweenInfo, {
+                    BackgroundTransparency = 1,
+                    TextTransparency = 1
+                })
+                transparencyTween:Play()
+                transparencyTween.Completed:Connect(function()
+                    child.Visible = false
+                end)
+            end
+        end
+    else
+        local sizeTween = TweenService:Create(mainFrame, tweenInfo, {
+            Size = originalSize
+        })
+        sizeTween:Play()
+        
+        minimizeButton.Text = "−"
+        
+        for _, child in ipairs(mainFrame:GetChildren()) do
+            if child ~= title and child ~= minimizeButton and child ~= closeButton and child ~= Corner then
+                child.Visible = true
+                
+                if child:IsA("ScrollingFrame") then
+                    child.BackgroundTransparency = 1
+                elseif child:IsA("TextButton") then
+                    child.BackgroundTransparency = 0.4
+                    child.TextTransparency = 0
+                elseif child:IsA("Frame") then
+                    child.BackgroundTransparency = 1
+                    for _, subChild in ipairs(child:GetChildren()) do
+                        if subChild:IsA("TextButton") then
+                            subChild.BackgroundTransparency = 0.4
+                            subChild.TextTransparency = 0
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
 local function CreateButton(text, position)
     local button = Instance.new("TextButton")
     button.Name = text:gsub(" ", "") .. "Button"
@@ -370,13 +443,27 @@ local function SafeScan()
     end
 end
 
+local function ScanAllSounds()
+    local success, sounds = pcall(function()
+        return game:GetDescendants()
+    end)
+    
+    if success then
+        for _, sound in ipairs(sounds) do
+            if sound:IsA("Sound") then
+                LogSound(sound)
+            end
+        end
+    end
+end
+
 local autoScanEnabled = false
 local autoScanConnection
 
 autoScanButton.MouseButton1Click:Connect(function()
     autoScanEnabled = not autoScanEnabled
     autoScanButton.BackgroundColor3 = autoScanEnabled and 
-        Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
+        Color3.fromRGB(60, 60, 60) or Color3.fromRGB(0, 0, 0)
     
     if autoScanEnabled then
         if autoScanConnection then
@@ -409,7 +496,7 @@ clearAllButton.MouseButton1Click:Connect(function()
 end)
 
 scanAllButton.MouseButton1Click:Connect(function()
-    SafeScan()
+    ScanAllSounds()
 end)
 
 screenGui.AncestryChanged:Connect(function(_, parent)
